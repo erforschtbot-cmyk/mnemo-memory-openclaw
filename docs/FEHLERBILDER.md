@@ -72,22 +72,55 @@ rm -rf .venv        # nur nach Bestaetigung; Daten liegen woanders
 **Bedeutung:** Der Dienst ist im gesamten LAN ohne Authentifizierung erreichbar.
 Das ist kein Betriebsdetail, sondern eine offene Schnittstelle.
 
-**Ursachen:**
+**Es gibt drei Ursachen. Prüfe sie in dieser Reihenfolge:**
 
-1. `server.host` steht in `~/.config/mnemo-cortex/mnemo-cortex.yaml` auf
-   `0.0.0.0`.
-2. `AGENTB_CONFIG` fehlt in der env-Datei, der Dienst nimmt den Fallback-Host.
-
-**Fix:**
+1. **YAML:** `server.host` steht auf `0.0.0.0`.
+2. **env:** `AGENTB_CONFIG` fehlt, der Dienst nimmt den Fallback-Host.
+3. **systemd-Unit:** `ExecStart` wurde nachträglich von Hand auf `--host 0.0.0.0`
+   geändert. Das ist die Ursache, die man übersieht, weil Manifest und YAML
+   weiterhin `127.0.0.1` sagen — die Unit ist die dritte Quelle.
 
 ```bash
+# 1) YAML
 grep -n 'host:' ~/.config/mnemo-cortex/mnemo-cortex.yaml
+# 2) env
 grep -n 'AGENTB_CONFIG' ~/.config/mnemo-cortex/mnemo-cortex.env
-# host auf 127.0.0.1 setzen (Editor), AGENTB_CONFIG ggf. ergaenzen:
-#   echo "AGENTB_CONFIG=$HOME/.config/mnemo-cortex/mnemo-cortex.yaml" >> env (nach Pruefung!)
+# 3) Unit — entscheidend: was wird WIRKLICH gestartet?
+systemctl --user cat mnemo-cortex | grep -n 'ExecStart'
+systemctl --user show mnemo-cortex -p ExecStart --value
+```
+
+**Fix, je nach Befund:**
+
+- YAML: `host: 127.0.0.1` setzen.
+- env: `AGENTB_CONFIG=$HOME/.config/mnemo-cortex/mnemo-cortex.yaml` ergänzen
+  (Datei bleibt `chmod 600`), nur nach Prüfung des Pfads.
+- Unit: `--host 0.0.0.0` in der `ExecStart`-Zeile durch `--host 127.0.0.1`
+  ersetzen. Die Datei liegt unter
+  `~/.config/systemd/user/mnemo-cortex.service`. Vorher Backup:
+
+```bash
+cp -a ~/.config/systemd/user/mnemo-cortex.service ~/.config/systemd/user/mnemo-cortex.service.bak
+# Editor: nur --host aendern, Rest unveraendert lassen
+systemctl --user daemon-reload
 systemctl --user restart mnemo-cortex
 ss -ltn | grep 50001          # muss 127.0.0.1 zeigen
+curl -s http://127.0.0.1:50001/health | head -c 120
 ```
+
+**Vor dem Neustart prüfen, ob gerade jemand von außen verbunden ist:**
+
+```bash
+ss -tn state established '( sport = :50001 )'
+```
+
+Stehen dort fremde IPs, ist der Neustart ein Bruch für diese Clients — das ist
+beabsichtigt (die offene Schnittstelle geht zu), muss aber angekündigt werden.
+
+**Wichtig:** Nicht per `robot-install.sh` „reparieren“. Der Lauf würde die Unit
+zwar aus dem Manifest neu bauen, aber auch Config, env und Tenant anfassen —
+bei einer laufenden Installation ist das der falsche Weg (siehe
+[KOMPATIBILITAET.md](KOMPATIBILITAET.md), Abschnitt 0).
 
 Wenn der Dienst bewusst von anderen Hosts erreichbar sein soll: nicht über
 `0.0.0.0` lösen, sondern über einen SSH-Tunnel oder eine authentifizierte
