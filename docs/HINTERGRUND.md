@@ -127,5 +127,6 @@ nächtliche Konsolidierung. Mnemo ist das Langzeitgedächtnis daneben.
 Der Upstream-Installer schreibt `AGENTB_CONFIG` nicht in die env-Datei. Ohne
 diese Variable findet der Dienst seine YAML-Config nicht, fällt auf
 `0.0.0.0` zurück und verweigert ohne Auth den Start. Der Patch ist eine Zeile
-und wird von `install.sh` idempotent gesetzt. Nach einem `git pull` im
+und wird in [START-HERE.md](../START-HERE.md), Schritt 5, manuell und idempotent
+gesetzt. Nach einem `git pull` im
 Mnemo-Verzeichnis erneut ausführen.
