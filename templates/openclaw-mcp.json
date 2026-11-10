@@ -1,7 +1,7 @@
 {
   // Block fuer ~/.openclaw/openclaw.json unter "mcp" -> "servers".
-  // install.sh traegt ihn automatisch ein; diese Datei ist fuer den manuellen Weg.
-  // <USER> ersetzen, z. B. durch "openclaw" oder den Benutzernamen aus `whoami`.
+  // Diese Datei ist eine Vorlage zum manuellen Eintragen (START-HERE, Abschnitt 9).
+  // <USER> ersetzen, z.B. durch den Benutzernamen aus `whoami`.
   "mnemo-cortex": {
     "command": "/usr/bin/node",
     "args": [
