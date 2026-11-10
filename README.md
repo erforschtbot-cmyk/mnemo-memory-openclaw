@@ -81,6 +81,7 @@ Prüfen statt glauben:
 bash -n install.sh
 grep -nE 'sudo|rm -rf|eval|base64|curl[^|]*\|[[:space:]]*(ba)?sh|wget' install.sh   # muss leer sein
 ./install.sh --explain
+./tests/selftest.sh   # prueft Manifest- und Config-Logik in einem Temp-Verzeichnis
 ```
 
 Details, Flags und Sonderfälle: [START-HERE.md](START-HERE.md).
