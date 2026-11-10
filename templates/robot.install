@@ -1,0 +1,60 @@
+{
+  // Mnemo Cortex — Installations-Manifest (Vorlage)
+  // install.sh ersetzt Modellnamen, Port und Agent-ID automatisch.
+  // Fuer den manuellen Weg: Werte hier direkt anpassen und als
+  // ~/.local/share/mnemo-cortex/robot.install speichern.
+  //
+  // Wichtig:
+  //  - host bleibt 127.0.0.1 (niemals 0.0.0.0!)
+  //  - model-Werte muessen in `ollama list` stehen
+  //  - agent_id bestimmt, welches Gedaechtnis der Agent sieht
+
+  "service": {
+    "host": "127.0.0.1",
+    "port": 50001,
+    "data_dir": "~/.mnemo-cortex"
+  },
+
+  "reasoning": {
+    "provider": "ollama",
+    "model": "qwen3.5:cloud",
+    "api_base": "http://127.0.0.1:11434",
+    "api_key_env": ""
+  },
+
+  "embedding": {
+    "provider": "ollama",
+    "model": "nomic-embed-text",
+    "api_base": "http://127.0.0.1:11434"
+  },
+
+  "decay": {
+    "topology_warn_days": 30,
+    "topology_stale_days": 90,
+    "current_state_warn_days": 90,
+    "relationship_warn_days": 180,
+    "session_log_warn_days": 90
+  },
+
+  "systemd": {
+    "enabled": true,
+    "service_name": "mnemo-cortex"
+  },
+
+  "smoke_test": {
+    "enabled": true,
+    "agent_id": "openclaw-shared"
+  },
+
+  "facts_seed": {
+    "enabled": false,
+    "yaml": "./tools/seed-facts.example.yaml",
+    "watcher": {
+      "post_commit_hook": false,
+      "hook_repo": "",
+      "nightly_cron": false,
+      "cron_hour": 3,
+      "cron_minute": 10
+    }
+  }
+}
