@@ -30,6 +30,26 @@ grep -nE 'sudo|rm -rf|eval|base64|curl[^|]*\|[[:space:]]*(ba)?sh|wget' install.s
 
 Erwartung: **keine Treffer**. (Wenn doch: nicht ausführen, melden.)
 
+## 1.5 Annahmen, die das Skript macht — prüfe sie vorher
+
+Kein Installer kennt deine Umgebung. Diese Annahmen stecken in `install.sh`:
+
+| Annahme | Wenn sie nicht stimmt |
+|---|---|
+| Linux mit systemd-User-Instanz | `--no-service`, Start selbst regeln |
+| OpenClaw-Config unter `~/.openclaw/openclaw.json` | `OPENCLAW_CONFIG=/pfad/... ./install.sh` oder `--skip-openclaw` |
+| Config ist reines JSON | Bei Kommentaren/JSON5 wird der Merge **übersprungen** und der Block zum manuellen Eintragen ausgegeben |
+| OpenClaw und Mnemo laufen unter **demselben Benutzer** | Installation mit dem Gateway-Benutzer ausführen |
+| `node` liegt im PATH | `NODE_BIN=/pfad/zu/node ./install.sh` |
+| Port 50001 frei (oder bereits Mnemo) | `MNEMO_PORT=50002 ./install.sh` |
+| Ollama lokal auf `127.0.0.1:11434` | erst Ollama einrichten; Pflicht für Embeddings |
+| Ein Gateway auf diesem Host | bei Remote-Gateway: Mnemo dort installieren, wo die Bridge läuft |
+| Kein fremder Dienst auf 50001 | nicht verdrängen, erst klären |
+
+Der Bericht aus `./install.sh --check-only` zeigt die meisten dieser Punkte.
+Die vollständige Entscheidungsmatrix steht in
+[KOMPATIBILITAET.md](KOMPATIBILITAET.md).
+
 ## 2. Was es tut, Schritt für Schritt
 
 `./install.sh --explain` gibt dieselbe Liste aus, ohne etwas zu ändern.
