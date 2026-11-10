@@ -1,0 +1,28 @@
+{
+  // Block fuer ~/.openclaw/openclaw.json unter "mcp" -> "servers".
+  // install.sh traegt ihn automatisch ein; diese Datei ist fuer den manuellen Weg.
+  // <USER> ersetzen, z. B. durch "openclaw" oder den Benutzernamen aus `whoami`.
+  "mnemo-cortex": {
+    "command": "/usr/bin/node",
+    "args": [
+      "/home/<USER>/.local/share/mnemo-cortex/integrations/mcp-bridge/server.js"
+    ],
+    "env": {
+      "MNEMO_URL": "http://127.0.0.1:50001",
+      "MNEMO_AGENT_ID": "openclaw-shared",
+      "MNEMO_SHARE": "always"
+    },
+    "cwd": "/home/<USER>/.local/share/mnemo-cortex/integrations/mcp-bridge",
+    "supportsParallelToolCalls": true,
+    "connectionTimeoutMs": 10000,
+    "requestTimeoutMs": 30000
+  }
+}
+
+// Erklaerung der env-Werte:
+//   MNEMO_URL      Adresse des Dienstes. Immer 127.0.0.1, niemals 0.0.0.0.
+//   MNEMO_AGENT_ID Name des Gedaechtnisses ("Tenant"). Gleiche ID = gleiche
+//                  Erinnerungen. openclaw-shared teilt sie zwischen Agenten.
+//   MNEMO_SHARE    "always"   = alle Agenten duerfen lesen (Quellhost-Stand)
+//                  "separate" = jeder Agent nur eigene Erinnerungen (Default)
+//                  "never"    = Teilen auch per Tool nicht moeglich
