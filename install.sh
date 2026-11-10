@@ -25,6 +25,7 @@ OPENCLAW_CONFIG="${OPENCLAW_CONFIG:-$HOME/.openclaw/openclaw.json}"
 MNEMO_REASON_MODEL="${MNEMO_REASON_MODEL:-qwen3.5:cloud}"
 MNEMO_EMBED_MODEL="${MNEMO_EMBED_MODEL:-nomic-embed-text}"
 MNEMO_PIN="${MNEMO_PIN:-6c5a04c}"
+NODE_BIN="${NODE_BIN:-$(command -v node 2>/dev/null || true)}"
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 CHECK_ONLY=0; PATCH_ONLY=0; NO_SERVICE=0; SKIP_OPENCLAW=0; WITH_NATIVE_LOCAL=0; RESTART_GATEWAY=0; EXPLAIN=0
@@ -182,7 +183,50 @@ preflight() {
   local av; av=$(df -Pk "$HOME" | awk 'NR==2 {print $4}')
   [ "${av:-0}" -gt 512000 ] && ok "Platz frei ($((av/1024)) MB)" || { fail "zu wenig Platz (< 500 MB)"; missing=1; }
 
+  compat_report
+
   [ "$missing" = 0 ] || die "Voraussetzungen fehlen — siehe FAIL oben, dann erneut starten."
+}
+
+# Bericht ueber die vorhandene OpenClaw-Umgebung. Jede Installation ist anders
+# aufgebaut; diese Werte muss die KI lesen, bevor sie etwas aendert.
+compat_report() {
+  step "Umgebungsbericht (Vorab-Pruefung)"
+  local oc=""
+  oc=$(command -v openclaw 2>/dev/null || true)
+  [ -z "$oc" ] && [ -x "$HOME/.npm-global/bin/openclaw" ] && oc="$HOME/.npm-global/bin/openclaw"
+  if [ -n "$oc" ]; then
+    ok "OpenClaw: $($oc --version 2>/dev/null | head -1)"
+  else
+    warn "OpenClaw-CLI nicht gefunden — Version und Dienstmodell selbst pruefen"
+  fi
+  ok "Node fuer die MCP-Bridge: ${NODE_BIN:-FEHLT}"
+
+  if [ ! -f "$OPENCLAW_CONFIG" ]; then
+    warn "keine Config unter $OPENCLAW_CONFIG — MCP-Block spaeter manuell eintragen"
+    return 0
+  fi
+  python3 - "$OPENCLAW_CONFIG" <<'PY'
+import json, os, sys
+p = sys.argv[1]
+try:
+    d = json.load(open(p))
+except Exception as e:
+    print(f"  WARN Config ist nicht als JSON lesbar ({e.__class__.__name__}) — vermutlich Kommentare/JSON5.")
+    print("       Automatischer Merge wird uebersprungen; Block manuell eintragen.")
+    sys.exit(0)
+agents = (d.get("agents") or {}).get("entries") or {}
+print(f"  INFO Agenten in der Config: {len(agents) if agents else 'nur defaults'}")
+prov = (((d.get("memory") or {}).get("search") or {}).get("provider"))
+print(f"  INFO memory.search.provider: {prov or 'nicht gesetzt'}")
+servers = ((d.get("mcp") or {}).get("servers") or {})
+print(f"  INFO vorhandene MCP-Server: {', '.join(sorted(servers)) or 'keine'}")
+if "mnemo-cortex" in servers:
+    print("  WARN mnemo-cortex existiert bereits — wird aktualisiert (Backup wird angelegt)")
+for key in ("memory", "plugins"):
+    if key in d:
+        print(f"  INFO Abschnitt '{key}' vorhanden — wird nicht angetastet")
+PY
 }
 
 fetch_mnemo() {
@@ -263,14 +307,24 @@ merge_openclaw_config() {
     warn "keine Config unter $OPENCLAW_CONFIG — Block manuell aus templates/openclaw-mcp.json eintragen"
     return 0
   fi
+  # Config muss maschinenlesbares JSON sein, sonst nichts anfassen.
+  if ! python3 - "$OPENCLAW_CONFIG" <<'PY'
+import json, sys
+json.load(open(sys.argv[1]))
+PY
+  then
+    warn "Config ist nicht reines JSON (Kommentare/JSON5?). Automatischer Merge uebersprungen."
+    warn "Block aus templates/openclaw-mcp.json manuell eintragen. Node: $NODE_BIN"
+    return 0
+  fi
   local backup="$OPENCLAW_CONFIG.bak-mnemo-$(date +%Y%m%d-%H%M%S)"
   cp -a "$OPENCLAW_CONFIG" "$backup"
-  python3 - "$OPENCLAW_CONFIG" "$MNEMO_DIR" "$MNEMO_PORT" "$MNEMO_AGENT_ID" "$MNEMO_SHARE" "$WITH_NATIVE_LOCAL" <<'PY'
+  python3 - "$OPENCLAW_CONFIG" "$MNEMO_DIR" "$MNEMO_PORT" "$MNEMO_AGENT_ID" "$MNEMO_SHARE" "$WITH_NATIVE_LOCAL" "$NODE_BIN" <<'PY'
 import json, sys
-path, mdir, port, agent, share, native_local = sys.argv[1:7]
+path, mdir, port, agent, share, native_local, node_bin = sys.argv[1:8]
 d = json.load(open(path))
 block = {
-    "command": "/usr/bin/node",
+    "command": node_bin,
     "args": [f"{mdir}/integrations/mcp-bridge/server.js"],
     "env": {
         "MNEMO_URL": f"http://127.0.0.1:{int(port)}",
