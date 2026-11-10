@@ -1,97 +1,81 @@
 # START HERE — Anleitung für die einbauende KI
 
 **Für dich.** Du bist eine KI auf einem OpenClaw-Host und sollst dieses
-Gedächtnisverfahren einbauen. Du brauchst kein Vorwissen über Mnemo, MCP oder
-dieses Repository. Arbeite die Schritte der Reihe nach ab. Jeder Schritt sagt
-dir, was du tun sollst, was du sehen wirst und was du tun sollst, wenn es anders
-aussieht.
+Gedächtnisverfahren einbauen. Du brauchst kein Vorwissen. Du führst **jeden
+Befehl selbst** aus, einen nach dem anderen, und prüfst das Ergebnis. Es gibt
+kein Installationsskript in diesem Repository — genau damit du nicht blind
+etwas ausführst.
 
-**Grundregeln für dich:**
+Die einzige Ausnahme ist der **Original-Installer von Mnemo Cortex**
+(`robot-install.sh`). Den darfst du aufrufen, nachdem du sein Manifest gelesen
+und angepasst hast.
+
+**Grundregeln:**
 
 0. **Informiere dich zuerst über die Zielumgebung.** Jede OpenClaw ist anders
-   installiert: anderer Benutzer, anderer Dienstmanager, andere Config, andere
-   Agenten, manchmal Container oder ein Gateway auf einem anderen Host. Bevor du
-   etwas installierst, stellst du den Ist-Zustand fest und entscheidest, ob der
-   Eingriff hier problemlos ist. Siehe Abschnitt 1.5 und
+   aufgebaut: Benutzer, Dienstmanager, Config-Format, Agenten, manchmal
+   Container oder ein Gateway auf einem anderen Host. Siehe Abschnitt 2 und
    [docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md).
-1. **Nichts improvisieren.** Keine Modellnamen raten, keine Ports ändern, keine
-   Firewall öffnen, nichts nach außen freigeben.
-2. **Nicht überspringen.** Die Reihenfolge hat Gründe: ohne Dienst kein MCP,
-   ohne MCP keine Tools.
-3. **Prüfen statt glauben.** Jeder Schritt hat einen Erwartungswert. Weicht er
-   ab, brich ab und lies [docs/FEHLERBILDER.md](docs/FEHLERBILDER.md).
-4. **Nur eine Frage an den Menschen**, wenn wirklich etwas fehlt (siehe
-   Abschnitt 9). Alles andere kannst du selbst feststellen.
-5. **Keine Secrets in Erinnerungen.** Keine Passwörter, Tokens, Schlüssel.
+1. **Erst prüfen, ob Mnemo hier schon läuft.** Wenn ja: **nicht installieren.**
+   Dann nur den MCP-Block ergänzen (Abschnitt 9, Fall B).
+2. **Nichts improvisieren.** Keine Modellnamen raten, keine Ports ändern, keine
+   Firewall öffnen.
+3. **Nicht überspringen.** Die Reihenfolge hat Gründe.
+4. **Prüfen statt glauben.** Jeder Schritt nennt einen Erwartungswert. Weicht er
+   ab: abbrechen und [docs/FEHLERBILDER.md](docs/FEHLERBILDER.md) lesen.
+5. **Keine Secrets in Erinnerungen.**
 
 ---
 
 ## 0. Begriffe in 60 Sekunden
 
-- **OpenClaw** – die Agenten-Plattform, auf der du läufst. Konfiguration:
-  `~/.openclaw/openclaw.json`. Agenten-Tools werden über MCP-Server erweitert.
-- **MCP** – ein Standard, über den ein Agent zusätzliche Tools bekommt. Ein
-  MCP-Server ist hier ein kleines Node-Programm, das OpenClaw startet.
-- **Mnemo Cortex** – ein lokaler Dienst (Python), der Erinnerungen speichert und
-  semantisch wiederfindet. Er läuft getrennt von OpenClaw auf Port 50001.
-- **Bridge** – das Node-Programm dazwischen. Es übersetzt MCP-Aufrufe in
-  HTTP-Aufrufe an Mnemo.
-- **Tenant / Agent-ID** – Name, unter dem Erinnerungen abgelegt werden. Gleiche
-  ID = gleiches Gedächtnis. Hier: `openclaw-shared`.
+- **OpenClaw** – die Agenten-Plattform, auf der du läufst. Config:
+  `~/.openclaw/openclaw.json`. Zusatz-Tools kommen über MCP-Server.
+- **MCP** – Standard für Agenten-Tools. Die Bridge ist ein kleines
+  Node-Programm, das OpenClaw startet.
+- **Mnemo Cortex** – lokaler Dienst (Python) für semantische Erinnerungen,
+  Port 50001, Daten unter `~/.mnemo-cortex`.
+- **Bridge** – Node-Programm zwischen MCP und Mnemo.
+- **Tenant / Agent-ID** – Name des Gedächtnisses. Gleiche ID = gleiche
+  Erinnerungen.
 
-Es gibt **zwei** Gedächtnisse, absichtlich:
-
-- **OpenClaw nativ**: Dateien im Workspace (`MEMORY.md`, `memory/*.md`),
-  `memory_search`, nächtliche Konsolidierung. Bleibt wie es ist.
-- **Mnemo**: sofort abfragbar, semantisch, agentenübergreifend, mit Verfall.
-  Das baust du jetzt ein.
+Zwei Gedächtnisse, absichtlich: OpenClaw nativ (`MEMORY.md`, `memory/*.md`,
+`memory_search`, nächtliches Dreaming) bleibt unverändert. Mnemo kommt daneben.
 
 ---
 
 ## 1. Feststellen, wo du bist
 
-Führe aus und notiere die Ausgaben:
-
 ```bash
 whoami
 echo "$HOME"
 uname -s
-```
-
-Erwartung: ein Benutzername, ein Home-Pfad, `Linux`.
-
-OpenClaw finden:
-
-```bash
 command -v openclaw || ls -l "$HOME/.npm-global/bin/openclaw"
 openclaw --version 2>/dev/null || "$HOME/.npm-global/bin/openclaw" --version
 ```
 
-Erwartung: eine Version wie `OpenClaw 2026.x.y (...)`. Merke dir den **vollen
-Pfad** des Befehls; wenn `openclaw` nicht im PATH liegt, benutze ihn mit Pfad.
-
-Prüfen, ob du eine Shell hast: ja, sonst hättest du die Befehle nicht ausführen
-können. Ohne Shell kannst du nur den Link an den Menschen geben (Abschnitt 9).
+Erwartung: Benutzer, Home, `Linux`, eine OpenClaw-Version. Merke dir den
+OpenClaw-Pfad.
 
 ---
 
-## 1.5 Vorab informieren: passt die Installation zu dieser OpenClaw?
+## 2. Vorab informieren: passt die Installation hierher?
 
-**Pflicht, bevor du installierst.** Dieser Eingriff startet einen Dienst,
-belegt Port 50001 und ergänzt `openclaw.json`. Das kann in einer anders
-aufgebauten Umgebung stören. Prüfe mindestens das:
+**Pflicht.** Dieser Eingriff startet einen Dienst, belegt Port 50001 und ändert
+`openclaw.json`. In einer anders aufgebauten Umgebung kann das stören.
 
 ```bash
-# 1) Version und Installationsart
-echo "--- OpenClaw ---"; openclaw --version 2>/dev/null || "$HOME/.npm-global/bin/openclaw" --version
-command -v openclaw; ls -d "$HOME/.openclaw" 2>/dev/null
-
-# 2) Wie laeuft der Gateway?
-systemctl --user status 2>/dev/null | head -3
+echo "--- Dienstmanager ---"
+systemctl --user is-system-running 2>/dev/null || echo "keine systemd-User-Instanz"
 systemctl --user is-active openclaw-gateway 2>/dev/null || true
-ps -eo user,comm,args | grep -i '[o]penclaw' | head -5
 
-# 3) Config lesbar? (JSON5/Kommentare brechen den Auto-Merge)
+echo "--- Laeuft Mnemo schon? ---"
+curl -s --max-time 3 http://127.0.0.1:50001/health || echo "keine Antwort auf 50001"
+ls -la "$HOME/.config/mnemo-cortex" 2>/dev/null || echo "keine Mnemo-Config"
+systemctl --user is-active mnemo-cortex 2>/dev/null || true
+ss -ltn | grep 50001 || echo "Port 50001 frei"
+
+echo "--- OpenClaw-Config ---"
 python3 - <<'PY'
 import json, os
 p = os.path.expanduser("~/.openclaw/openclaw.json")
@@ -105,380 +89,369 @@ except Exception as e:
     print("NICHT JSON-lesbar:", e)
 PY
 
-# 4) Port und Ressourcen
-ss -ltn | grep 50001 || echo "Port 50001 frei"
-free -m | head -2; df -h "$HOME" | tail -1
+echo "--- Ressourcen ---"
+free -m | head -2
+df -h "$HOME" | tail -1
 ```
 
-**Entscheide dann anhand von
-[docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md), Abschnitt 2:**
+**Entscheide mit [docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md):**
 
-- **Grün** — Standardfall, du kannst mit Abschnitt 2 fortfahren.
-- **Gelb** — Installation möglich, aber mit Anpassung (z. B. `--skip-openclaw`
-  bei JSON5-Config, `NODE_BIN=$(command -v node)`, anderer Port,
-  `--no-service` im Container).
-- **Rot** — **nicht installieren**: flüchtiger Container ohne Volume, fremd
-  verwaltete Instanz, kein Ollama und keine Erlaubnis, kein Backup/Rollback,
-  unbekannter Dienst auf Port 50001. Dann melden und fragen.
-
-Der Installer zeigt dieselben Punkte noch einmal als „Umgebungsbericht“ an und
-bricht bei fehlenden Voraussetzungen ab. Aber die Entscheidung, ob der Eingriff
-in **diese** Installation passt, trifft er nicht für dich.
+- **Mnemo antwortet auf 50001 oder es gibt eine Mnemo-Config** → **nicht
+  installieren**. Weiter mit Abschnitt 9, Fall B (nur MCP-Block).
+- **Alles frei und Grün** → weiter mit Abschnitt 3.
+- **Gelb** (JSON5-Config, anderer Node-Pfad, Container, anderer Port) → die
+  Anpassung steht in der Matrix.
+- **Rot** (flüchtiger Container, fremd verwaltete Instanz, kein Ollama und
+  keine Erlaubnis, kein Backup/Rollback, unbekannter Dienst auf 50001) →
+  **nicht installieren**, melden und fragen.
 
 ---
 
-## 2. Voraussetzungen prüfen
-
-Führe diesen Block **komplett** aus. Er ändert nichts.
+## 3. Voraussetzungen prüfen
 
 ```bash
-echo "--- Python ---"; python3 --version
-echo "--- venv ---"; python3 -c 'import venv; print("venv ok")'
-echo "--- Node ---"; node --version
-echo "--- Git ---"; git --version
-echo "--- systemd ---"; systemctl --user is-system-running 2>/dev/null || echo "keine systemd-User-Instanz"
-echo "--- Ollama ---"; curl -s --max-time 5 http://127.0.0.1:11434/api/tags | head -c 120
-echo "--- Modelle ---"; ollama list 2>/dev/null | grep -E 'nomic-embed-text|qwen3.5' || echo "Modelle fehlen"
-echo "--- Port ---"; (ss -ltn 2>/dev/null || netstat -ltn 2>/dev/null) | grep ':50001' || echo "Port 50001 frei"
-echo "--- Platz ---"; df -h "$HOME" | tail -1
+python3 --version
+python3 -c 'import venv; print("venv ok")'
+node --version
+git --version
+curl -s --max-time 5 http://127.0.0.1:11434/api/tags | head -c 120
+ollama list | grep -E 'nomic-embed-text|qwen3.5'
 ```
-
-**Sollzustand:**
 
 | Prüfung | Erwartung |
 |---|---|
-| Python | `Python 3.10` oder höher |
-| venv | `venv ok` |
-| Node | `v18` oder höher |
-| Git | eine Version |
-| systemd | `running` (sonst später `--no-service`) |
+| Python | ≥ 3.10, `venv ok` |
+| Node | ≥ 18 |
+| Git/curl | vorhanden |
 | Ollama | JSON mit `"models"` |
-| Modelle | `nomic-embed-text` **und** ein Reasoner |
-| Port | `Port 50001 frei` |
-| Platz | mindestens 500 MB frei |
+| Modelle | `nomic-embed-text` + ein Reasoner |
+| Platz | ≥ 500 MB frei |
 
-**Wenn etwas fehlt:**
+Fehlt etwas: erst herstellen (siehe unten), nicht überspringen.
 
-- `venv` fehlt → Debian/Ubuntu: `sudo apt install -y python3-venv`; Arch:
-  `sudo pacman -S --needed python`
-- Node fehlt → `sudo apt install -y nodejs npm` **oder** Node 20 über
-  `nvm`/`fnm`. Mindestens 18.
-- Git fehlt → `sudo apt install -y git`
-- Ollama fehlt → **erst den Menschen fragen** (Abschnitt 9). Nicht einfach
-  installieren, das ist ein eigener Dienst mit eigenem Speicherbedarf.
-- `nomic-embed-text` fehlt → `ollama pull nomic-embed-text` (Pflicht, sonst
-  findet Recall nichts).
-- Reasoner fehlt → `ollama pull qwen3.5:cloud`. Ohne Cloud-Zugang ein lokales
-  Modell wählen, z. B. `qwen3:8b`, und in Schritt 3 einsetzen.
-- Port belegt → `ss -ltnp | grep 50001` zeigt den Prozess. Nicht killen, erst
-  prüfen, ob dort schon ein Mnemo läuft (`curl -s 127.0.0.1:50001/health`).
-  Läuft dort bereits eines, ist der Dienst schon da: weiter mit Schritt 5.
+- `venv` fehlt → `sudo apt install -y python3-venv` (Debian/Ubuntu) oder
+  `sudo pacman -S --needed python` (Arch)
+- Node fehlt → `sudo apt install -y nodejs npm` oder Node ≥ 18 über nvm/fnm
+- Ollama fehlt → **Menschen fragen**, nicht selbst installieren
+- Embedding fehlt → `ollama pull nomic-embed-text` (Pflicht)
+- Reasoner fehlt → `ollama pull qwen3.5:cloud` oder lokales Modell wählen
 
 ---
 
-## 3. Repository holen
+## 4. Mnemo Cortex holen (Original-Projekt)
 
 ```bash
-git clone https://github.com/erforschtbot-cmyk/mnemo-memory-openclaw.git "$HOME/.openclaw/mnemo-handover"
-cd "$HOME/.openclaw/mnemo-handover"
-ls
-```
-
-Erwartung: `README.md  START-HERE.md  install.sh  verify.sh  docs  templates`.
-
-Wenn das Verzeichnis schon existiert: nicht neu klonen, sondern
-
-```bash
-cd "$HOME/.openclaw/mnemo-handover" && git pull --ff-only
-```
-
----
-
-## 3.5 Bevor du ausführst: prüfen, was der Code tut
-
-**Du startest kein fremdes Skript blind.** Auch dieses nicht. Drei Prüfungen,
-zwei Minuten:
-
-```bash
-cd "$HOME/.openclaw/mnemo-handover"
-wc -l install.sh
-bash -n install.sh
-# gefaehrliche Muster suchen (Erwartung: keine Treffer)
-grep -nE 'sudo|rm -rf|eval|base64|curl[^|]*\|[[:space:]]*(ba)?sh|wget' install.sh
-# Logik in einem Temp-Verzeichnis pruefen, ohne das System zu veraendern
-./tests/selftest.sh
-# Plan anzeigen, ohne etwas zu aendern
-./install.sh --explain
-```
-
-Dann beantworte fuer dich diese drei Fragen. Kannst du eine nicht beantworten,
-lies [docs/WAS-PASSIERT-BEIM-INSTALL.md](docs/WAS-PASSIERT-BEIM-INSTALL.md),
-bevor du weitermachst.
-
-1. **Welche Dateien werden geändert?** (Antwort: neues Programmverzeichnis,
-   Config unter `~/.config/mnemo-cortex`, systemd-Unit, ein Block in
-   `openclaw.json` — Letzteres mit Backup.)
-2. **Wohin geht Netzwerkverkehr?** (github.com für den Code, PyPI für
-   Python-Pakete, `127.0.0.1` für Ollama und Mnemo. Sonst nichts.)
-3. **Wie mache ich es rückgängig?** (Dienst deaktivieren, Block aus
-   `openclaw.json` entfernen, Verzeichnisse löschen —
-   `docs/WAS-PASSIERT-BEIM-INSTALL.md`, Abschnitt 5.)
-
-Wenn das Skript `sudo` verlangt, einen Port nach außen öffnet oder ohne Backup
-löscht: **abbrechen und melden**. Das ist hier nicht vorgesehen.
-
----
-
-## 4. Installieren
-
-### Weg A — ein Befehl (empfohlen)
-
-```bash
-cd "$HOME/.openclaw/mnemo-handover"
-./install.sh
-```
-
-Das Skript macht:
-
-1. Voraussetzungen erneut prüfen (bricht mit klarer Meldung ab)
-2. Mnemo Cortex nach `~/.local/share/mnemo-cortex` holen, gepinnt auf `6c5a04c`
-3. den Pflicht-Patch am Installer setzen
-4. Installations-Manifest schreiben (loopback, Port 50001, Ollama-Modelle)
-5. `.venv` anlegen, Paket installieren, systemd-Unit erzeugen und starten
-6. auf `/health` warten
-7. den MCP-Block in `~/.openclaw/openclaw.json` eintragen (mit Backup)
-8. `verify.sh` ausführen (Schreiben + Lesen)
-
-**Erwartung am Ende:**
-
-```
-== Ergebnis ==
-  OK   Dienst aktiv
-  OK   health ok (v4.14.0)
-  OK   loopback 127.0.0.1:50001
-  OK   Recall antwortet
-  OK   gespeichert und wiedergefunden
-ERGEBNIS: alles gruen
-Naechster Schritt: OpenClaw neu starten ...
-```
-
-Kommt `ERGEBNIS: Fehler vorhanden` → Abschnitt 8 / `docs/FEHLERBILDER.md`.
-
-### Weg B — manuell (nur wenn Weg A scheitert)
-
-Dann musst du verstehen, was passiert. Die Einzelbefehle:
-
-```bash
-# 1) Quellcode
 git clone https://github.com/GuyMannDude/mnemo-cortex.git "$HOME/.local/share/mnemo-cortex"
 cd "$HOME/.local/share/mnemo-cortex"
 git checkout 6c5a04c
-grep -m1 '^version' pyproject.toml          # muss 4.14.0 sein
-
-# 2) Pflicht-Patch: AGENTB_CONFIG in die env-Datei schreiben
-"$HOME/.openclaw/mnemo-handover/install.sh" --patch-only
-
-# 3) Manifest
-cp "$HOME/.openclaw/mnemo-handover/templates/robot.install" robot.install
-
-# 4) Installieren
-./robot-install.sh                           # muss {"ok": true} ausgeben
-
-# 5) Dienst
-systemctl --user daemon-reload
-systemctl --user enable --now mnemo-cortex
-systemctl --user status mnemo-cortex --no-pager | head -12
+grep -m1 '^version' pyproject.toml
 ```
 
-Warum der Patch Pflicht ist: ohne `AGENTB_CONFIG` in
-`~/.config/mnemo-cortex/mnemo-cortex.env` startet der Dienst mit
-Fallback-Bind `0.0.0.0` und verweigert ohne Auth den Start. Das ist kein
-Schönheitsfehler, sondern der häufigste Abbruchgrund.
+Erwartung: `version = "4.14.0"`.
+
+Wenn das Verzeichnis schon existiert: nicht klonen, sondern
+
+```bash
+cd "$HOME/.local/share/mnemo-cortex" && git status --short && git log -1 --oneline
+```
+
+und prüfen, ob dort schon eine Installation liegt (dann Abschnitt 2).
 
 ---
 
-## 5. OpenClaw anbinden
+## 5. Ein-Zeilen-Patch am Original-Installer
 
-### 5a. Prüfen, was das Skript eingetragen hat
+Der Upstream-Installer schreibt `AGENTB_CONFIG` nicht in die env-Datei. Ohne
+diese Zeile startet der Dienst auf `0.0.0.0` und verweigert ohne Auth den
+Start. Das ist der häufigste Abbruchgrund.
+
+**Erst ansehen, was die Zeile tut:**
+
+```bash
+grep -n 'Mnemo Cortex env' robot-install.sh
+sed -n '355,375p' robot-install.sh
+```
+
+**Dann patchen (eine Zeile, nur wenn sie fehlt, vorher Backup):**
+
+```bash
+cp -a robot-install.sh robot-install.sh.bak
+# idempotent: patcht nur, wenn die Zeile noch nicht vorhanden ist
+grep -q 'AGENTB_CONFIG=\$CONFIG_FILE' robot-install.sh || \
+  sed -i '/echo "# Mnemo Cortex env/a\    echo "AGENTB_CONFIG=$CONFIG_FILE"' robot-install.sh
+grep -n -A2 'Mnemo Cortex env' robot-install.sh
+```
+
+Erwartung: unter der Ankerzeile steht **genau einmal**
+`echo "AGENTB_CONFIG=$CONFIG_FILE"`. Steht sie doppelt, ist die Datei schon
+zweimal gepatcht → Backup zurückspielen und Schritt wiederholen. Mehr ändert
+der Patch nicht.
+
+Prüfen, dass nur eine Zeile dazugekommen ist:
+
+```bash
+diff robot-install.sh.bak robot-install.sh
+```
+
+---
+
+## 6. Manifest anpassen
+
+Das Manifest sagt dem Installer, was gebaut wird. Vorlage aus diesem Repo
+nehmen und die Werte prüfen:
+
+```bash
+cp templates/robot.install "$HOME/.local/share/mnemo-cortex/robot.install"
+```
+
+Öffne die Datei und kontrolliere:
+
+| Feld | Wert | Warum |
+|---|---|---|
+| `service.host` | `127.0.0.1` | niemals `0.0.0.0` |
+| `service.port` | `50001` | muss frei sein |
+| `reasoning.model` | Modell aus `ollama list` | sonst kein Preflight |
+| `embedding.model` | `nomic-embed-text` | sonst kein Recall |
+| `smoke_test.agent_id` | dein Tenant, z. B. `openclaw-shared` | bestimmt die ID |
+| `systemd.enabled` | `true` (Linux mit systemd) | sonst `false` |
+
+Der Installer entfernt `//`-Kommentare selbst; du kannst sie stehen lassen.
+
+---
+
+## 7. Original-Installer ausführen
+
+Das ist der **einzige** fremde Installer, den du ausführst. Er legt `.venv` an,
+installiert Python-Pakete, schreibt Config und env-Datei, erzeugt die
+systemd-Unit und macht einen Smoke-Test.
+
+```bash
+cd "$HOME/.local/share/mnemo-cortex"
+./robot-install.sh
+```
+
+Erwartung: **genau ein JSON-Objekt** auf stdout, `"ok": true`, Exit-Code 0.
+
+```bash
+echo "exit=$?"
+```
+
+Bei `"ok": false`: die genannte Stufe lesen, reparieren, erneut ausführen.
+Nicht weiterbauen.
+
+---
+
+## 8. Dienst und Health prüfen
+
+Der Installer aktiviert den Dienst bereits. Prüfe es selbst:
+
+```bash
+systemctl --user is-active mnemo-cortex
+systemctl --user status mnemo-cortex --no-pager | head -12
+curl -s http://127.0.0.1:50001/health | python3 -m json.tool
+ss -ltn | grep 50001
+```
+
+Erwartung:
+
+- `active`
+- Health: `"status":"ok"`, `version 4.14.0`, `embedding.healthy true`
+- `ss` zeigt `127.0.0.1:50001` — **nicht** `0.0.0.0:50001`
+
+Wenn der Dienst nicht läuft:
+
+```bash
+journalctl --user -u mnemo-cortex -n 50 --no-pager
+```
+
+Häufigste Ursache: `AGENTB_CONFIG` fehlt in
+`~/.config/mnemo-cortex/mnemo-cortex.env` → Patch aus Abschnitt 5, dann
+
+```bash
+systemctl --user daemon-reload
+systemctl --user restart mnemo-cortex
+```
+
+### Schreib-/Lesetest (manuell, ein Testeintrag)
+
+```bash
+MARK="MNEMO-SELFTEST-$(date +%Y%m%d-%H%M%S)"
+curl -s -X POST http://127.0.0.1:50001/writeback \
+  -H 'Content-Type: application/json' \
+  -d "{\"session_id\":\"openclaw-shared-selftest\",\"summary\":\"Installations-Selftest $MARK\",\"key_facts\":[\"selftest_marker=$MARK\"],\"projects_referenced\":[],\"decisions_made\":[],\"agent_id\":\"openclaw-shared\",\"source\":\"tool\",\"category\":\"session_log\"}"
+sleep 2
+curl -s -X POST http://127.0.0.1:50001/context \
+  -H 'Content-Type: application/json' \
+  -d "{\"prompt\":\"$MARK\",\"agent_id\":\"openclaw-shared\",\"max_results\":3,\"exclude_categories\":[]}"
+```
+
+Erwartung: erst eine `memory_id`, dann ein Treffer, der `$MARK` enthält. Sonst
+Embedding-Modell prüfen.
+
+---
+
+## 9. OpenClaw anbinden
+
+### Fall A — Mnemo wurde gerade neu installiert
+
+Backup, dann Block eintragen. **Nicht** die GUI-Speichern-Schaltfläche nutzen,
+wenn der Host dabei sofort neu startet.
+
+```bash
+cp -a "$HOME/.openclaw/openclaw.json" "$HOME/.openclaw/openclaw.json.bak-$(date +%Y%m%d-%H%M%S)"
+python3 -m json.tool "$HOME/.openclaw/openclaw.json" > /dev/null && echo "Config ist valides JSON"
+```
+
+Öffne `~/.openclaw/openclaw.json` und ergänze unter `mcp` → `servers` (bestehende
+Server bleiben stehen):
+
+```json
+"mnemo-cortex": {
+  "command": "/usr/bin/node",
+  "args": ["/home/<USER>/.local/share/mnemo-cortex/integrations/mcp-bridge/server.js"],
+  "env": {
+    "MNEMO_URL": "http://127.0.0.1:50001",
+    "MNEMO_AGENT_ID": "openclaw-shared",
+    "MNEMO_SHARE": "always"
+  },
+  "cwd": "/home/<USER>/.local/share/mnemo-cortex/integrations/mcp-bridge",
+  "supportsParallelToolCalls": true,
+  "connectionTimeoutMs": 10000,
+  "requestTimeoutMs": 30000
+}
+```
+
+`<USER>` ersetzen, `command` auf den echten Node-Pfad setzen
+(`command -v node`). Danach validieren:
+
+```bash
+python3 -m json.tool "$HOME/.openclaw/openclaw.json" > /dev/null && echo "JSON ok"
+```
+
+Ist die Datei kein reines JSON (Kommentare/JSON5), trage den Block mit deinem
+Editor ein und prüfe die Datei mit dem Werkzeug, das dieser Host sonst nutzt.
+Nichts automatisch umschreiben.
+
+### Fall B — Mnemo läuft hier schon
+
+**Nicht installieren, nicht patchen, keinen Dienst anfassen.** Nur den
+MCP-Block ergänzen — mit der **vorhandenen** Agent-ID, sonst siehst du die
+alten Erinnerungen nicht:
 
 ```bash
 python3 - <<'PY'
 import json, os
 p = os.path.expanduser("~/.openclaw/openclaw.json")
 d = json.load(open(p))
-s = d.get("mcp", {}).get("servers", {}).get("mnemo-cortex")
-print(json.dumps(s, indent=1) if s else "FEHLT: mcp.servers.mnemo-cortex")
+s = (d.get("mcp") or {}).get("servers", {}).get("mnemo-cortex")
+print("vorhandener Block:", json.dumps(s, indent=1) if s else "keiner")
 PY
 ```
 
-Erwartung: ein Block mit `command`, `args`, `env` (`MNEMO_URL`,
-`MNEMO_AGENT_ID`, `MNEMO_SHARE`).
+- Block vorhanden → nichts tun, nur Abschnitt 10 prüfen.
+- Block fehlt → Block wie in Fall A eintragen, aber `MNEMO_AGENT_ID` auf die ID
+  setzen, unter der die vorhandenen Daten liegen (aus der Mnemo-Config oder
+  beim Betreiber erfragen). `MNEMO_SHARE` passend wählen.
 
-`MNEMO_AGENT_ID` ist der Name des Gedächtnisses. `openclaw-shared` bedeutet:
-alle Agenten dieses Hosts teilen es. Willst du Trennung, nutze pro Agent eine
-eigene ID und `MNEMO_SHARE=separate`.
+---
 
-### 5b. Neu starten
+## 10. Neu starten und Tools prüfen
 
-Die MCP-Server werden nur beim Start geladen.
+MCP-Server werden nur beim Start geladen.
 
-- Läuft dein Agent **in** dieser OpenClaw: Der Eigentümer sendet `/restart` im
-  Chat. Du selbst startest den Gateway nicht neu, während du darin arbeitest.
-- Hast du Shell-Zugriff auf den Host und keinen laufenden Chat: 
-  `openclaw gateway restart` (oder den vollen Pfad). Achtung: das beendet
-  laufende Sitzungen.
+- Läuft dein Agent **in** dieser OpenClaw: Der Eigentümer sendet `/restart`.
+- Shell-Zugriff, kein laufender Chat: `openclaw gateway restart` (beendet
+  Sitzungen).
+- Danach `openclaw gateway status`.
 
-### 5c. Prüfen, dass die Tools da sind
-
-In der nächsten Sitzung muss deine Tool-Liste diese Namen enthalten (Präfix je
-nach Host, z. B. `mnemo-cortex__mnemo_recall`):
+In der nächsten Sitzung müssen diese Tools sichtbar sein (Präfix je nach Host,
+z. B. `mnemo-cortex__mnemo_recall`):
 
 `mnemo_recall`, `mnemo_save`, `mnemo_search`, `mnemo_share`,
 `mnemo_recall_trajectory`, `mnemo_save_trajectory`, `mnemo_fact_save`,
 `mnemo_fact_demote`
 
-Fehlen sie: `openclaw.json` prüfen (JSON gültig?), Pfad in `args` existiert?
-`node <pfad>/server.js` muss starten. Dann erneut neu starten.
+Fehlen sie: Block prüfen, Pfad prüfen (`ls -l <bridge>/server.js`), erneut neu
+starten.
+
+**Funktionstest aus der Sitzung:**
+
+1. `mnemo_save` mit `summary: "Installations-Selftest: Mnemo antwortet."`,
+   `source: "tool"`, `category: "session_log"`.
+   Erwartung: `memory_id`, `agent`, `category_used`.
+2. `mnemo_recall` mit einer eindeutigen Formulierung aus dem Save.
+   Erwartung: der Eintrag kommt zurück.
+3. `memory_search` mit einem Workspace-Begriff.
+   Erwartung: funktioniert wie vorher.
 
 ---
 
-## 6. Echter Funktionstest aus der Sitzung
+## 11. Arbeitsregeln aktivieren
 
-Nicht nur curl — die Tools müssen aus dem Agenten heraus funktionieren.
+Inhalt von [templates/AGENTS-memory-block.md](templates/AGENTS-memory-block.md)
+in die `AGENTS.md` übernehmen (Abschnitt `## Memory` ersetzen/ergänzen).
 
-**Test 1 — Erinnern (lesend):**
-
-Rufe `mnemo_recall` auf mit `query: "Mnemo Cortex Langzeitgedächtnis"`,
-`max_results: 3`.
-
-Erwartung: Treffer mit `relevance`, `category`, `source`, Alter. Oder
-`No memories found.` bei einer frischen Installation — das ist **ok**, solange
-Test 2 funktioniert.
-
-**Test 2 — Speichern und wiederfinden:**
-
-Rufe `mnemo_save` auf mit:
-
-```
-summary: "Installations-Selftest: Mnemo Cortex ist auf diesem Host eingebaut und antwortet."
-key_facts: ["selftest_marker=MNEMO-OK-<datum>"]
-source: "tool"
-category: "session_log"
-```
-
-Erwartung: Antwort mit `memory_id`, `session`, `agent`, `category_used`.
-
-Dann `mnemo_recall` mit `query: "MNEMO-OK-<datum>"` und
-`exclude_categories: []`.
-
-Erwartung: genau dieser Treffer. Kommt er nicht, ist das Embedding-Modell nicht
-aktiv → `docs/FEHLERBILDER.md`.
-
-**Test 3 — native Memory unberührt:**
-
-`memory_search` mit irgendeinem Begriff aus dem Workspace.
-
-Erwartung: funktioniert wie vorher. Mnemo ersetzt die native Schicht nicht.
+Kurzfassung: vor Fragen zu früherer Arbeit `memory_search`, bei älteren oder
+agentenübergreifenden Fakten `mnemo_recall`/`mnemo_search`, vor wiederkehrenden
+Aufgaben `mnemo_recall_trajectory`; speichern nach Salienz; `source` korrekt;
+`stale_warning` ernst nehmen; nach guter Arbeit `mnemo_save_trajectory`.
 
 ---
 
-## 7. Arbeitsregeln aktivieren
+## 12. Abnahmeprotokoll
 
-Ohne Regeln speichert der Agent entweder nichts oder Müll. Kopiere den Inhalt
-von [templates/AGENTS-memory-block.md](templates/AGENTS-memory-block.md) in die
-`AGENTS.md` deines OpenClaw-Workspace (Abschnitt `## Memory` ersetzen oder
-ergänzen).
+```
+[ ] Zielumgebung geprueft (Abschnitt 2, KOMPATIBILITAET.md)
+[ ] Mnemo lief vorher nicht / oder: nicht installiert, nur Block ergaenzt
+[ ] Dienst: active
+[ ] Health: status ok, v4.14.0, embedding healthy
+[ ] Bind: 127.0.0.1:50001 (nicht 0.0.0.0)
+[ ] Schreib-/Lesetest: memory_id + Treffer
+[ ] MCP-Block vorhanden, JSON valide
+[ ] Gateway neu gestartet
+[ ] Tools sichtbar (Namen notieren)
+[ ] Save->Recall aus der Sitzung
+[ ] memory_search nativ funktioniert
+[ ] AGENTS.md-Regeln eingetragen
+```
 
-Kurzfassung, die du selbst ab jetzt befolgst:
-
-- Vor Fragen zu früherer Arbeit: `memory_search`, dann bei älteren oder
-  agentenübergreifenden Fakten `mnemo_recall`/`mnemo_search`.
-- Vor wiederkehrenden Aufgaben: `mnemo_recall_trajectory`.
-- Speichern nach Salienz: Entscheidungen, verifizierte Fakten, gelöste
-  nicht-triviale Probleme. Kein Chat-Protokoll, keine Logs.
-- `source: "user"` nur, wenn der Mensch es gesagt hat; `"tool"` bei
-  deterministischem Tool-Output; sonst `"inferred"`.
-- `stale_warning` ernst nehmen: IPs, Ports, Prozessstände vor dem Handeln live
-  prüfen.
-- Nach guter nicht-trivialer Arbeit: `mnemo_save_trajectory` mit Schritten,
-  Ergebnis und ehrlicher 1–5-Bewertung.
+Fehlschläge nicht beschönigen.
 
 ---
 
-## 8. Abnahmeprotokoll
+## 13. Was du den Menschen fragen darfst
 
-Melde dem Menschen genau diese Punkte, jeweils mit Ergebnis:
+1. „Ollama fehlt. Soll ich es installieren, oder machst du das?"
+2. „Welches Reasoner-Modell: `qwen3.5:cloud` oder lokal?"
+3. „Mnemo läuft schon. Unter welcher Agent-ID liegen die vorhandenen
+   Erinnerungen?"
+4. „Soll das Gedächtnis geteilt werden (`MNEMO_SHARE=always`) oder getrennt?"
 
-```
-[ ] Mnemo-Dienst: systemctl --user is-active mnemo-cortex  -> active
-[ ] Health: curl 127.0.0.1:50001/health                     -> status ok, v4.14.0
-[ ] Bind: ss -ltn | grep 50001                              -> 127.0.0.1:50001 (nicht 0.0.0.0)
-[ ] verify.sh                                               -> alles gruen
-[ ] MCP-Block in openclaw.json                              -> vorhanden
-[ ] Gateway neu gestartet                                   -> ja/nein
-[ ] Tools sichtbar                                          -> welche Namen
-[ ] Save->Recall aus der Sitzung                            -> memory_id + Treffer
-[ ] memory_search nativ                                     -> funktioniert
-[ ] AGENTS.md-Regeln eingetragen                            -> ja/nein
-```
-
-Fehlschläge nicht beschönigen. Ein nicht verifizierter Punkt ist ein offener
-Punkt.
-
----
-
-## 9. Was du den Menschen fragen darfst (und was nicht)
-
-**Fragen, wenn zutreffend:**
-
-1. „Ollama ist nicht installiert. Soll ich es installieren, oder machst du das?“
-2. „Welches Reasoner-Modell soll ich nutzen: `qwen3.5:cloud` (Cloud) oder ein
-   lokales Modell?“
-3. „Soll das Gedächtnis von allen Agenten geteilt werden
-   (`openclaw-shared`, `MNEMO_SHARE=always`) oder jeder Agent getrennt?“
-
-**Nicht fragen, selbst prüfen:** Pfade, Versionen, Ports, ob OpenClaw läuft, wo
-die Config liegt, ob Node/Python da ist.
+Alles andere (Pfade, Versionen, Ports, Config-Ort) prüfst du selbst.
 
 **Nie ohne Auftrag:** Ports nach außen öffnen, Firewall ändern, Gateway
-deinstallieren, `~/.mnemo-cortex` löschen, Secrets in Erinnerungen schreiben.
+deinstallieren, `~/.mnemo-cortex` löschen, Secrets speichern.
 
 ---
 
-## 10. Wenn du keine Shell hast
-
-Dann kannst du nicht installieren. Gib dem Menschen diese Zeilen:
+## 14. Reihenfolge zum Nachschlagen
 
 ```
-Repository: https://github.com/erforschtbot-cmyk/mnemo-memory-openclaw
-Darin: START-HERE.md (Anleitung), install.sh (Ein-Kommando-Installation)
-Voraussetzungen: Linux + systemd, Python 3.10+, Node 18+, Ollama mit
-nomic-embed-text und einem Reasoner-Modell.
+0. Zielumgebung + vorhandene Mnemo-Installation pruefen
+1. whoami / openclaw --version
+2. Voraussetzungen
+3. git clone + Pin
+4. Patch (eine Zeile, mit Backup)
+5. Manifest anpassen
+6. ./robot-install.sh  (Original-Programm)
+7. Dienst + Health + Schreib-/Lesetest
+8. MCP-Block (Fall A neu / Fall B vorhanden)
+9. Gateway neu starten, Tools pruefen
+10. AGENTS.md-Regeln
+11. Abnahmeprotokoll
 ```
 
-Und bitte ihn, dir danach die Ausgabe von `./install.sh` und `./verify.sh` zu
-zeigen; dann prüfst du das Ergebnis und übernimmst die Arbeitsregeln aus
-Abschnitt 7.
-
----
-
-## 11. Reihenfolge zum Nachschlagen
-
-```
-0. Zielumgebung pruefen              -> docs/KOMPATIBILITAET.md, Abschnitt 1
-1. whoami / openclaw --version        -> wo bin ich
-2. Voraussetzungsblock               -> was fehlt
-3. git clone                         -> Werkzeuge da
-3.5 install.sh lesen + --explain     -> verstehen, was passiert
-4. ./install.sh                      -> Dienst + Config + Test
-5. openclaw.json prüfen              -> Block vorhanden
-6. Gateway neu starten               -> MCP lädt
-7. mnemo_save + mnemo_recall         -> wirklich funktionsfähig
-8. AGENTS.md-Regeln                  -> Verhalten
-9. Abnahmeprotokoll                  -> melden
-```
-
-Alles Weitere: [docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md),
+Weiter: [docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md),
 [docs/WAS-PASSIERT-BEIM-INSTALL.md](docs/WAS-PASSIERT-BEIM-INSTALL.md),
 [docs/HINTERGRUND.md](docs/HINTERGRUND.md),
 [docs/BETRIEB.md](docs/BETRIEB.md), [docs/FEHLERBILDER.md](docs/FEHLERBILDER.md).
