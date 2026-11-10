@@ -8,6 +8,13 @@ Arbeitsregeln, die daraus brauchbares Erinnern machen.
 > Lies nicht dieses README, sondern **[START-HERE.md](START-HERE.md)**. Das ist
 > die Schritt-für-Schritt-Anleitung mit Prüfpunkten. Dieses README erklärt nur,
 > *was* du da installierst.
+>
+> **Vor der Installation Pflicht:** Prüfe die Zielumgebung. Jede OpenClaw ist
+> anders aufgebaut — anderer Benutzer, Dienstmanager, Config-Format, Agenten,
+> manchmal Container oder ein Gateway auf einem anderen Host. Was passt und was
+> ein Abbruchkriterium ist, steht in
+> **[docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md)**. Der Installer ändert
+> `openclaw.json` und startet einen Dienst; das macht man nicht auf Verdacht.
 
 ---
 
@@ -53,8 +60,9 @@ Git, curl, **Ollama** mit `nomic-embed-text` und einem Reasoner-Modell.
 ```bash
 git clone https://github.com/erforschtbot-cmyk/mnemo-memory-openclaw.git ~/.openclaw/mnemo-handover
 cd ~/.openclaw/mnemo-handover
-./install.sh --explain     # zeigt jeden Schritt, aendert nichts
-./install.sh               # erst nachdem du den Plan gelesen hast
+./install.sh --check-only   # Voraussetzungen + Umgebungsbericht, aendert nichts
+./install.sh --explain      # zeigt jeden Schritt, aendert nichts
+./install.sh                # erst nachdem beides zu deiner Umgebung passt
 ```
 
 Das Skript prüft die Voraussetzungen, installiert Mnemo Cortex (gepinnt auf den
@@ -91,6 +99,7 @@ Details, Flags und Sonderfälle: [START-HERE.md](START-HERE.md).
 | Datei | Inhalt |
 |---|---|
 | [START-HERE.md](START-HERE.md) | Anleitung für die einbauende KI, Schritt für Schritt mit Erwartungswerten |
+| [docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md) | Vorab-Prüfung: passt die Installation zu dieser OpenClaw? Grün/Gelb/Rot |
 | [docs/WAS-PASSIERT-BEIM-INSTALL.md](docs/WAS-PASSIERT-BEIM-INSTALL.md) | jede Aktion, jede Datei, jeder Netzwerkzugriff, Rückbau |
 | [docs/HINTERGRUND.md](docs/HINTERGRUND.md) | Architektur, Datenfluss, warum zwei Gedächtnisse |
 | [docs/BETRIEB.md](docs/BETRIEB.md) | Tagesbetrieb: wann erinnern, was speichern, Wartung, Rückbau |
