@@ -39,7 +39,8 @@ tar -czf "$HOME/mnemo-backup-$(date +%F).tar.gz" \
 ```
 
 Wiederherstellen: Dienst stoppen, beide Verzeichnisse zurückkopieren, Rechte
-prüfen (`env`-Datei `600`), Dienst starten, `verify.sh`.
+prüfen (`env`-Datei `600`), Dienst starten, Checks aus dem Abschnitt
+„Gesundheitscheck“ unten.
 
 Die native Memory (Workspace) sichert man separat über Git oder das
 OpenClaw-Backup — sie ist nicht Teil von Mnemo.
@@ -49,10 +50,12 @@ OpenClaw-Backup — sie ist nicht Teil von Mnemo.
 ```bash
 cd ~/.local/share/mnemo-cortex
 git pull --ff-only
-"$HOME/.openclaw/mnemo-handover/install.sh" --patch-only   # Patch erneut, falls ueberschrieben
-./robot-install.sh                                        # vorhandene Config bleibt
+# Patch pruefen und nur bei Bedarf neu setzen (eine Zeile)
+grep -q 'AGENTB_CONFIG=\$CONFIG_FILE' robot-install.sh || \
+  sed -i '/echo "# Mnemo Cortex env/a\    echo "AGENTB_CONFIG=$CONFIG_FILE"' robot-install.sh
+./robot-install.sh                     # vorhandene Config bleibt
 systemctl --user restart mnemo-cortex
-"$HOME/.openclaw/mnemo-handover/verify.sh"
+# danach Gesundheitscheck unten
 ```
 
 Vorher Backup (siehe oben). Nach dem Update prüfen, ob der Patch noch greift:
@@ -113,10 +116,12 @@ Die native Memory bleibt unberührt und funktioniert weiter.
 ## Gesundheitscheck (regelmäßig)
 
 ```bash
-./verify.sh
-systemctl --user status mnemo-cortex --no-pager | head -5
+systemctl --user is-active mnemo-cortex
+curl -s http://127.0.0.1:50001/health | python3 -m json.tool
+ss -ltn | grep 50001                 # muss 127.0.0.1 zeigen
 journalctl --user -u mnemo-cortex --since "-24h" | grep -iE 'error|traceback' | tail
 ```
 
-`verify.sh` ist bewusst mit einem Schreibtest ausgestattet. Ein grüner Lauf
-belegt, dass Embeddings, Schreiben und Lesen zusammen funktionieren.
+Schreib-/Lesetest wie in [START-HERE.md](../START-HERE.md), Abschnitt 8: eine
+Testmarke schreiben und zurücklesen. Erst wenn beides klappt, sind Embeddings,
+Schreiben und Lesen zusammen belegt.
