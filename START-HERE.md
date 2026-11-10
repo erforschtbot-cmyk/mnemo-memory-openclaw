@@ -8,6 +8,12 @@ aussieht.
 
 **Grundregeln für dich:**
 
+0. **Informiere dich zuerst über die Zielumgebung.** Jede OpenClaw ist anders
+   installiert: anderer Benutzer, anderer Dienstmanager, andere Config, andere
+   Agenten, manchmal Container oder ein Gateway auf einem anderen Host. Bevor du
+   etwas installierst, stellst du den Ist-Zustand fest und entscheidest, ob der
+   Eingriff hier problemlos ist. Siehe Abschnitt 1.5 und
+   [docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md).
 1. **Nichts improvisieren.** Keine Modellnamen raten, keine Ports ändern, keine
    Firewall öffnen, nichts nach außen freigeben.
 2. **Nicht überspringen.** Die Reihenfolge hat Gründe: ohne Dienst kein MCP,
@@ -66,6 +72,58 @@ Pfad** des Befehls; wenn `openclaw` nicht im PATH liegt, benutze ihn mit Pfad.
 
 Prüfen, ob du eine Shell hast: ja, sonst hättest du die Befehle nicht ausführen
 können. Ohne Shell kannst du nur den Link an den Menschen geben (Abschnitt 9).
+
+---
+
+## 1.5 Vorab informieren: passt die Installation zu dieser OpenClaw?
+
+**Pflicht, bevor du installierst.** Dieser Eingriff startet einen Dienst,
+belegt Port 50001 und ergänzt `openclaw.json`. Das kann in einer anders
+aufgebauten Umgebung stören. Prüfe mindestens das:
+
+```bash
+# 1) Version und Installationsart
+echo "--- OpenClaw ---"; openclaw --version 2>/dev/null || "$HOME/.npm-global/bin/openclaw" --version
+command -v openclaw; ls -d "$HOME/.openclaw" 2>/dev/null
+
+# 2) Wie laeuft der Gateway?
+systemctl --user status 2>/dev/null | head -3
+systemctl --user is-active openclaw-gateway 2>/dev/null || true
+ps -eo user,comm,args | grep -i '[o]penclaw' | head -5
+
+# 3) Config lesbar? (JSON5/Kommentare brechen den Auto-Merge)
+python3 - <<'PY'
+import json, os
+p = os.path.expanduser("~/.openclaw/openclaw.json")
+try:
+    d = json.load(open(p))
+    print("JSON ok")
+    print("agents:", list((d.get("agents") or {}).get("entries") or {}))
+    print("mcp servers:", list((d.get("mcp") or {}).get("servers") or {}))
+    print("memory:", d.get("memory"))
+except Exception as e:
+    print("NICHT JSON-lesbar:", e)
+PY
+
+# 4) Port und Ressourcen
+ss -ltn | grep 50001 || echo "Port 50001 frei"
+free -m | head -2; df -h "$HOME" | tail -1
+```
+
+**Entscheide dann anhand von
+[docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md), Abschnitt 2:**
+
+- **Grün** — Standardfall, du kannst mit Abschnitt 2 fortfahren.
+- **Gelb** — Installation möglich, aber mit Anpassung (z. B. `--skip-openclaw`
+  bei JSON5-Config, `NODE_BIN=$(command -v node)`, anderer Port,
+  `--no-service` im Container).
+- **Rot** — **nicht installieren**: flüchtiger Container ohne Volume, fremd
+  verwaltete Instanz, kein Ollama und keine Erlaubnis, kein Backup/Rollback,
+  unbekannter Dienst auf Port 50001. Dann melden und fragen.
+
+Der Installer zeigt dieselben Punkte noch einmal als „Umgebungsbericht“ an und
+bricht bei fehlenden Voraussetzungen ab. Aber die Entscheidung, ob der Eingriff
+in **diese** Installation passt, trifft er nicht für dich.
 
 ---
 
@@ -407,6 +465,7 @@ Abschnitt 7.
 ## 11. Reihenfolge zum Nachschlagen
 
 ```
+0. Zielumgebung pruefen              -> docs/KOMPATIBILITAET.md, Abschnitt 1
 1. whoami / openclaw --version        -> wo bin ich
 2. Voraussetzungsblock               -> was fehlt
 3. git clone                         -> Werkzeuge da
@@ -419,6 +478,7 @@ Abschnitt 7.
 9. Abnahmeprotokoll                  -> melden
 ```
 
-Alles Weitere: [docs/WAS-PASSIERT-BEIM-INSTALL.md](docs/WAS-PASSIERT-BEIM-INSTALL.md),
+Alles Weitere: [docs/KOMPATIBILITAET.md](docs/KOMPATIBILITAET.md),
+[docs/WAS-PASSIERT-BEIM-INSTALL.md](docs/WAS-PASSIERT-BEIM-INSTALL.md),
 [docs/HINTERGRUND.md](docs/HINTERGRUND.md),
 [docs/BETRIEB.md](docs/BETRIEB.md), [docs/FEHLERBILDER.md](docs/FEHLERBILDER.md).
