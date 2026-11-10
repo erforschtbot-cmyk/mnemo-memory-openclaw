@@ -325,6 +325,12 @@ summary() {
 EOF
 }
 
+# Wird die Datei per 'source' geladen (z. B. fuer Tests), nur die Funktionen definieren
+# und nichts ausfuehren.
+if [ "${BASH_SOURCE[0]}" != "$0" ]; then
+  return 0 2>/dev/null || exit 0
+fi
+
 if [ "$EXPLAIN" = 1 ]; then explain; echo; echo "Nur Erklaerung — nichts geaendert."; exit 0; fi
 if [ "$CHECK_ONLY" = 1 ]; then preflight; echo; echo "Nur Pruefung — nichts geaendert."; exit 0; fi
 if [ "$PATCH_ONLY" = 1 ]; then apply_installer_patch "$MNEMO_DIR"; exit 0; fi
