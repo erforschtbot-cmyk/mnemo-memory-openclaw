@@ -1,6 +1,7 @@
 {
   // Mnemo Cortex — Installations-Manifest (Vorlage)
-  // install.sh ersetzt Modellnamen, Port und Agent-ID automatisch.
+  // Diese Datei nach ~/.local/share/mnemo-cortex/robot.install kopieren und
+  // die Werte von Hand anpassen; der Original-Installer liest sie.
   // Fuer den manuellen Weg: Werte hier direkt anpassen und als
   // ~/.local/share/mnemo-cortex/robot.install speichern.
   //
