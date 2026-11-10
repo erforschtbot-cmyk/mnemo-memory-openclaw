@@ -71,6 +71,29 @@ assert d["memory"]["search"]["provider"]=="local"
 print("  OK   Block eingetragen, bestehende Schluessel erhalten")
 PY
 
+echo "== Config-Merge bei JSON5/Kommentaren (muss uebersprungen werden) =="
+cat > "$T/json5.json" <<'JSON'
+{
+  // Kommentar, wie in handgepflegten Configs ueblich
+  "memory": { "search": { "provider": "local" } }
+}
+JSON
+cp "$T/json5.json" "$T/json5.before"
+(
+  set +e
+  source "$HERE/install.sh"
+  OPENCLAW_CONFIG="$T/json5.json"; MNEMO_DIR="/tmp/mnemo-test"
+  MNEMO_PORT=50123; MNEMO_AGENT_ID="test-agent"; MNEMO_SHARE="separate"; WITH_NATIVE_LOCAL=0
+  step(){ :; }; ok(){ :; }; warn(){ :; }; die(){ exit 1; }
+  merge_openclaw_config
+) >/dev/null 2>&1 || true
+if cmp -s "$T/json5.json" "$T/json5.before"; then
+  echo "  OK   Config unveraendert gelassen"
+else
+  bad "Config wurde trotz ungueltigem JSON veraendert"
+fi
+ls "$T"/json5.json.bak-mnemo-* >/dev/null 2>&1 && bad "Backup trotz Skip angelegt" || echo "  OK   kein Eingriff"
+
 echo "== Backup =="
 ls "$T"/openclaw.json.bak-mnemo-* >/dev/null 2>&1 && echo "  OK   Backup angelegt" || bad "kein Backup"
 
