@@ -147,6 +147,8 @@ wc -l install.sh
 bash -n install.sh
 # gefaehrliche Muster suchen (Erwartung: keine Treffer)
 grep -nE 'sudo|rm -rf|eval|base64|curl[^|]*\|[[:space:]]*(ba)?sh|wget' install.sh
+# Logik in einem Temp-Verzeichnis pruefen, ohne das System zu veraendern
+./tests/selftest.sh
 # Plan anzeigen, ohne etwas zu aendern
 ./install.sh --explain
 ```
