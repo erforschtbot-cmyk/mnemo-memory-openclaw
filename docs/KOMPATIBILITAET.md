@@ -41,6 +41,10 @@ ss -ltn | grep 50001
 - Ein `robot-install.sh`-Lauf würde Config, systemd-Unit und Tenant
   überschreiben. Erinnerungen unter einem anderen Tenant wären danach nicht
   mehr sichtbar.
+- Zeigt `ss -ltn | grep 50001` den Dienst auf `0.0.0.0`, ist das ein
+  Sicherheitsbefund — aber **kein Grund für eine Neuinstallation**. Ursache
+  kann YAML, env **oder die systemd-Unit** sein; der gezielte Fix steht in
+  [FEHLERBILDER.md](FEHLERBILDER.md), Abschnitt 1b.
 
 ---
 
