@@ -65,6 +65,34 @@ rm -rf .venv        # nur nach Bestaetigung; Daten liegen woanders
 ./robot-install.sh
 ```
 
+## 1b. Dienst lauscht auf 0.0.0.0
+
+**Symptom:** `ss -ltn | grep 50001` zeigt `0.0.0.0:50001` oder `*:50001`.
+
+**Bedeutung:** Der Dienst ist im gesamten LAN ohne Authentifizierung erreichbar.
+Das ist kein Betriebsdetail, sondern eine offene Schnittstelle.
+
+**Ursachen:**
+
+1. `server.host` steht in `~/.config/mnemo-cortex/mnemo-cortex.yaml` auf
+   `0.0.0.0`.
+2. `AGENTB_CONFIG` fehlt in der env-Datei, der Dienst nimmt den Fallback-Host.
+
+**Fix:**
+
+```bash
+grep -n 'host:' ~/.config/mnemo-cortex/mnemo-cortex.yaml
+grep -n 'AGENTB_CONFIG' ~/.config/mnemo-cortex/mnemo-cortex.env
+# host auf 127.0.0.1 setzen (Editor), AGENTB_CONFIG ggf. ergaenzen:
+#   echo "AGENTB_CONFIG=$HOME/.config/mnemo-cortex/mnemo-cortex.yaml" >> env (nach Pruefung!)
+systemctl --user restart mnemo-cortex
+ss -ltn | grep 50001          # muss 127.0.0.1 zeigen
+```
+
+Wenn der Dienst bewusst von anderen Hosts erreichbar sein soll: nicht über
+`0.0.0.0` lösen, sondern über einen SSH-Tunnel oder eine authentifizierte
+Reverse-Proxy-Regel. Ohne Auth gehört Mnemo nicht ins Netz.
+
 ## 2. Health ok, aber Suche schlecht
 
 ```bash
